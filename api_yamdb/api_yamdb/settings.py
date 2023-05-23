@@ -113,3 +113,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
 }
+
+# Указание, что вместо стандартной модели пользователя
+# нужно использовать модель из приложения users.
+AUTH_USER_MODEL = 'reviews.User'
