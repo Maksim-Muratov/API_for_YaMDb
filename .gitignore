@@ -149,3 +149,4 @@ dmypy.json
 media/
 
 /identifier.sqlite
+/api_yamdb/sent_emails/
