@@ -1,8 +1,33 @@
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 from .validators import validate_year
 
 LEN_NAME = 15
+
+CHOICES = (
+    ('user', 'Пользователь'),
+    ('admin', 'Администратор'),
+    ('moderator', 'Модератор'),
+)
+
+
+class User(AbstractUser):
+    """
+    Добавление полей Биографии и Роли для модели User.
+    """
+    email = models.EmailField(blank=False, unique=True)
+    # Текстовое поле "О пользователе".
+    bio = models.TextField(blank=True, null=True)
+    # Поле выбора роли из заданных вариантов.
+    role = models.CharField(max_length=50, choices=CHOICES, default='user')
+    # Поля для хранения кода подтверждения. Обновляется с каждым запросом.
+    confirmation_code = models.CharField(max_length=10, blank=True, null=True)
+
+    class Meta:
+        db_table = 'auth_user'  # Стандартное название таблицы, принудительно.
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
 
 
 class Genre(models.Model):
