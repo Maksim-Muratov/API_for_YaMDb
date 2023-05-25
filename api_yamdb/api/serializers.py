@@ -1,9 +1,11 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.validators import EmailValidator, MaxLengthValidator
 from django.db import transaction
-from rest_framework.validators import UniqueValidator
 from rest_framework import serializers
+
 from reviews.models import Category, Genre, Title
+
 User = get_user_model()
 
 
@@ -13,13 +15,17 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     /api/v1/auth/token/
     """
 
+    username = serializers.CharField(
+        validators=[
+            UnicodeUsernameValidator(),  # Валидатор для символов ^[\w.@+-]+\Z
+            MaxLengthValidator(150),
+        ]
+    )
+
     email = serializers.EmailField(
         write_only=True,
         required=True,
-        # Валидаторы, проверяют что введенный текст - email,
-        # Что адрес уникальный и что длина email не превышает 254 символа.
         validators=[EmailValidator(),
-                    UniqueValidator(queryset=User.objects.all()),
                     MaxLengthValidator(254)]
     )
 
@@ -27,25 +33,17 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username', 'email')
 
-    def validate_username(self, value):
+    def validate_username(self, username):
         """
         Проверка и запрет определенных значений для поля `username`.
         """
         # Здесь перечислены запрещенные usernames
         forbidden_usernames = ['admin', 'superuser',
                                'root', 'me']
-        if value.lower() in forbidden_usernames:
+        if username.lower() in forbidden_usernames:
             raise serializers.ValidationError(
                 "Запрещенное значение для username.")
-        return value
-
-    def update(self, instance, validated_data):
-        """
-        Update an existing user instance.
-        """
-        instance.confirmation_code = self.context['confirmation_code']
-        instance.save()
-        return instance
+        return username
 
     @transaction.atomic  # Записывает в БД, только выполнив всю работу.
     def create(self, validated_data):
@@ -53,9 +51,12 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         Создание пользователя.
         Сохранение введенных полей email, username и confirmation_code в БД.
         """
+        email = validated_data['email']
+        username = validated_data['username']
+
         user = User.objects.create(
-            email=validated_data['email'],
-            username=validated_data['username'],
+            email=email,
+            username=username,
             confirmation_code=self.context['confirmation_code']
         )
         user.save()
@@ -103,10 +104,11 @@ class GetTitleSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     genre = GenreSerializer(read_only=True, many=True)
     rating = serializers.IntegerField(
-         # Тут надо как-то считать средний рейтинг
-         read_only=True
+        # Тут надо как-то считать средний рейтинг
+        read_only=True
     )
 
     class Meta:
         model = Title
-        fields = ("id", "name", "year", "rating", "description", "genre", "category")
+        fields = (
+            "id", "name", "year", "rating", "description", "genre", "category")

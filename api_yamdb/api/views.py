@@ -22,7 +22,7 @@ class RegisterView(CreateAPIView):
 
     def generate_confirmation_code(self):
         """
-        Генерирует код подтверждения.
+        Генерирует случайный код подтверждения.
         """
         code_length = 10  # Длина кода подтверждения
         characters = string.ascii_letters + string.digits
@@ -36,23 +36,23 @@ class RegisterView(CreateAPIView):
         Возвращает username и email.
         Отправляет email.
         Генерирует код подтверждения.
+        Запрещает повторную регистрацию.
         """
 
-        # Запуск сериализатора.
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        # Генерация код подтверждения.
-        # confirmation_code = self.generate_confirmation_code()
-        # Добавляем confirmation_code в контекст
-        # serializer.context['confirmation_code'] = confirmation_code
-        # self.perform_create(serializer)
 
         existing_user = User.objects.filter(
             email=serializer.validated_data['email'],
             username=serializer.validated_data['username']
         ).first()
+        existing_email = User.objects.filter(
+            email=serializer.validated_data['email']
+        )
+        existing_username = User.objects.filter(
+            username=serializer.validated_data['username']
+        )
 
-        # TODO: вписать этот код сюда.
         # Если пользователь уже существует:
         if existing_user:
             # Создает новый код подтверждения.
@@ -60,11 +60,28 @@ class RegisterView(CreateAPIView):
             # И обновляет его в БД.
             existing_user.confirmation_code = confirmation_code
             existing_user.save()
+        elif existing_email:
+            response_data = {
+                'error': 'Пользователь с таким email уже существует.'
+            }
+            return Response(
+                response_data,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        elif existing_username:
+            response_data = {
+                'error': 'Пользователь с таким username уже существует.'
+            }
+            return Response(
+                response_data,
+                status=status.HTTP_400_BAD_REQUEST
+            )
         # Если нет:
         else:
             # Создает новый код подтверждения.
             confirmation_code = self.generate_confirmation_code()
-            # Добавляет confirmation_code в контекст
+            # Добавляет confirmation_code в контекст,
+            # Сериалайзер сохранит его в БД, вместе с новым пользователем.
             serializer.context['confirmation_code'] = confirmation_code
             # Создается сериализатор и пользователь.
             self.perform_create(serializer)
@@ -84,4 +101,3 @@ class RegisterView(CreateAPIView):
         return Response(response_data,
                         status=status.HTTP_200_OK, headers=headers)
 
-# TODO: Можно генерировать код подтверждения сколько угодно раз.
