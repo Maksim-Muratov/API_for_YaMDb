@@ -2,10 +2,11 @@ import logging
 
 from rest_framework.permissions import BasePermission
 
+# TODO: Удалить логгер.
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter(
-    '%(asctime)s [%(levelname)s] [%(lineno)d строка]  %(message)s '
+    '%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d строка]  %(message)s '
 )
 
 stream_handler = logging.StreamHandler()
@@ -43,10 +44,22 @@ class ModeratorPermission(BasePermission):
     """
     Разрешение, которое позволяет доступ только модераторам и Выше.
     """
-
+    # TODO: Проверить разрешения для модераторов. Оно должно отличаться.
     def has_permission(self, request, view):
-        return request.user.role == 'moderator' or 'admin'
+        return request.user.role == ('moderator' or
+                                     'admin' or
+                                     request.user.is_superuser)
 
     def has_object_permission(self, request, view, obj):
-        if request.user.role == 'moderator' or 'admin':
+        if request.user.role == ('moderator' or
+                                 'admin' or
+                                 request.user.is_superuser):
             return True
+
+
+class OwnerOnlyPermission(BasePermission):
+    """
+    Разрешение только для владельца.
+    """
+    def has_object_permission(self, request, view, obj):
+        return obj.author == request.user

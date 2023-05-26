@@ -6,23 +6,23 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from rest_framework import permissions, viewsets, filters
 from rest_framework import status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.generics import CreateAPIView, GenericAPIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .permissions import AdminOnlyPermission
+from .permissions import AdminOnlyPermission, OwnerOnlyPermission
 from .serializers import UserRegistrationSerializer, TokenSerializer, \
     UserSerializer
 
 User = get_user_model()
 
+# TODO: Удалить логгер.
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter(
-    '%(asctime)s [%(levelname)s] [%(lineno)d строка]  %(message)s '
+    '%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d строка]  %(message)s '
 )
-
 stream_handler = logging.StreamHandler()
 stream_handler.setLevel(logging.DEBUG)
 stream_handler.setFormatter(formatter)
@@ -120,6 +120,9 @@ class RegisterView(CreateAPIView):
 
 
 class TokenView(GenericAPIView):
+    """
+    Получения Токена.
+    """
     permission_classes = [permissions.AllowAny]  # Регистрация доступна всем.
     serializer_class = TokenSerializer
 
@@ -162,3 +165,36 @@ class UsersViewSet(viewsets.ModelViewSet):
     http_method_names = [  # Метод 'put' исключен.
         'get', 'post', 'patch', 'delete', 'head', 'options']
     lookup_field = 'username'  # /api/v1/users/rea/ вместо /api/v1/users/1/
+
+
+# class ProfileChangeView(GenericAPIView):
+#     """
+#     Получение и Изменение своего профиля.
+#     """
+#     permission_classes = OwnerOnlyPermission
+#     serializer_class = UserSerializer
+#
+#     def get(self, request):
+#         instance = self.get_object()
+#         serializer = self.get_serializer(instance)
+#         return Response(serializer.data)
+#
+#     def patch(self, request):
+#         pass
+
+
+@api_view(['GET', 'PATCH'])
+def profile_change(request):
+    """
+    Получение и Изменение своего профиля.
+    """
+    user = request.user
+    logger.debug(user)
+    if request.method == 'PATCH':
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer = UserSerializer()
+    return Response(serializer.data)
