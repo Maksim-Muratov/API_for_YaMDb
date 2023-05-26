@@ -1,9 +1,14 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.contrib.auth import get_user_model
 
-from .validators import validate_year
+from .validators import validate_year, validate_score
+
 
 LEN_NAME = 15
+LEN_TEXT = 30
+
+User = get_user_model()
 
 CHOICES = (
     ('user', 'Пользователь'),
@@ -75,6 +80,9 @@ class Title(models.Model):
     description = models.TextField(
         null=True, verbose_name='Описание'
     )
+    rating = models.IntegerField(
+        blank=True, default=None
+    )
     genre = models.ManyToManyField(
         Genre,
         through='TitleGenre',
@@ -121,3 +129,70 @@ class TitleGenre(models.Model):
                 name='uq_title_genre'
             )
         ]
+
+
+class Review(models.Model):
+    """Модель отзыва на произведение."""
+
+    title = models.ForeignKey(
+        Title,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+        verbose_name='Произведение'
+    )
+    text = models.TextField(
+        verbose_name='Отзыв'
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='reviews'
+    )
+    score = models.IntegerField(
+        validators=[validate_score],
+        verbose_name='Оценка произведения (По десятибальной шкале)'
+    )
+    pub_date = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Дата публикации'
+    )
+
+    class Meta:
+        ordering = ['-pub_date']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['title', 'author'],
+                name='uq_title_author'
+            )
+        ]
+
+    def __str__(self):
+        return self.text[:LEN_TEXT]
+
+
+class Comment(models.Model):
+    """Модель комментария к отзыву."""
+
+    review = models.ForeignKey(
+        Review,
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )
+    text = models.TextField(
+        verbose_name='Комментарий'
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )
+    pub_date = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Дата публикации'
+    )
+
+    class Meta:
+        ordering = ['-pub_date']
+
+    def __str__(self):
+        return self.text[:LEN_TEXT]
