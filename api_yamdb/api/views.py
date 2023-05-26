@@ -3,11 +3,13 @@ import string
 
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
-from rest_framework import permissions, status
-from rest_framework.generics import CreateAPIView
+from rest_framework import permissions
+from rest_framework import status
+from rest_framework.generics import CreateAPIView, GenericAPIView
 from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import UserRegistrationSerializer
+from .serializers import UserRegistrationSerializer, TokenSerializer
 
 User = get_user_model()
 
@@ -81,7 +83,7 @@ class RegisterView(CreateAPIView):
             # Создает новый код подтверждения.
             confirmation_code = self.generate_confirmation_code()
             # Добавляет confirmation_code в контекст,
-            # Сериалайзер сохранит его в БД, вместе с новым пользователем.
+            # Сериализатор сохранит его в БД, вместе с новым пользователем.
             serializer.context['confirmation_code'] = confirmation_code
             # Создается сериализатор и пользователь.
             self.perform_create(serializer)
@@ -101,3 +103,36 @@ class RegisterView(CreateAPIView):
         return Response(response_data,
                         status=status.HTTP_200_OK, headers=headers)
 
+
+class TokenView(GenericAPIView):
+    permission_classes = [permissions.AllowAny]  # Регистрация доступна всем.
+    serializer_class = TokenSerializer
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        username = serializer.validated_data['username']
+        confirmation_code = serializer.validated_data['confirmation_code']
+
+        # Проверяем учетные данные пользователя
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response(
+                {'username': 'Пользователь не найден.'},
+                status=status.HTTP_404_NOT_FOUND)
+
+        if user.confirmation_code == confirmation_code:
+
+            # Если учетные данные верны, создаем пару токенов
+            refresh = RefreshToken.for_user(user)
+
+            tokens = {
+                'access': str(refresh.access_token),
+            }
+
+            return Response(tokens)
+        else:
+            return Response(
+                        {'error': 'Предоставлены неверные данные.'},
+                        status=status.HTTP_400_BAD_REQUEST)
