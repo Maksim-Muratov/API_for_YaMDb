@@ -1,17 +1,32 @@
 import random
 import string
+import logging
 
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
-from rest_framework import permissions
+from rest_framework import permissions, viewsets, filters
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.generics import CreateAPIView, GenericAPIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import UserRegistrationSerializer, TokenSerializer
+from .permissions import AdminOnlyPermission
+from .serializers import UserRegistrationSerializer, TokenSerializer, \
+    UserSerializer
 
 User = get_user_model()
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter(
+    '%(asctime)s [%(levelname)s] [%(lineno)d строка]  %(message)s '
+)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.DEBUG)
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
 
 
 class RegisterView(CreateAPIView):
@@ -134,5 +149,16 @@ class TokenView(GenericAPIView):
             return Response(tokens)
         else:
             return Response(
-                        {'error': 'Предоставлены неверные данные.'},
-                        status=status.HTTP_400_BAD_REQUEST)
+                {'error': 'Предоставлены неверные данные.'},
+                status=status.HTTP_400_BAD_REQUEST)
+
+
+class UsersViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.order_by('id')  # Для пагинации нужна сортировка.
+    serializer_class = UserSerializer
+    permission_classes = [AdminOnlyPermission]
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('username',)
+    http_method_names = [  # Метод 'put' исключен.
+        'get', 'post', 'patch', 'delete', 'head', 'options']
+    lookup_field = 'username'  # /api/v1/users/rea/ вместо /api/v1/users/1/

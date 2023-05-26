@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 
 
@@ -109,16 +110,21 @@ STATIC_URL = '/static/'
 
 STATICFILES_DIRS = ((BASE_DIR / 'static/'),)
 
+# -----------------------------------------------------------------------------
+# Настройки Django Rest Framework
 REST_FRAMEWORK = {
+    # Стандартно - доступ только для авторизованных пользователей.
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-
+    # Авторизация по JWT-токену.
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
+    # Глобальная настройка пагинации ответов.
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10
 }
-
 # -----------------------------------------------------------------------------
 # Указание, что вместо стандартной модели пользователя
 # нужно использовать кастомную модель из приложения users.
@@ -137,4 +143,9 @@ EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
 # EMAIL_USE_SSL = True
 # EMAIL_HOST_USER = 'your@djangoapp.com'
 # EMAIL_HOST_PASSWORD = 'your password'
+# -----------------------------------------------------------------------------
+# Настройки библиотеки Simple_JWT.
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=7),  # Время жизни токена 7 дней,
+}
 # -----------------------------------------------------------------------------
