@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 
@@ -21,11 +22,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Добавленные библиотеки.
     'rest_framework',
     'rest_framework_simplejwt',
     'django_filters',
-    'api',
-    'reviews',
+    # Созданные приложения.
+    'api.apps.ApiConfig',
+    'reviews.apps.ReviewsConfig',
 ]
 
 MIDDLEWARE = [
@@ -90,9 +93,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru-RU'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Moscow'
 
 USE_I18N = True
 
@@ -119,3 +122,23 @@ REST_FRAMEWORK = {
         'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 5
 }
+
+# -----------------------------------------------------------------------------
+# Указание, что вместо стандартной модели пользователя
+# нужно использовать кастомную модель из приложения users.
+AUTH_USER_MODEL = 'reviews.User'
+# -----------------------------------------------------------------------------
+# Подключение бэкэнда имитирующего отправку писем.
+EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+# Папка куда будут складываться эти письма.
+EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
+
+# Бэкенд для реальной отправки писем. Нужно добавить логин\пароль.
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_USE_TLS = False
+# EMAIL_PORT = 465
+# EMAIL_USE_SSL = True
+# EMAIL_HOST_USER = 'your@djangoapp.com'
+# EMAIL_HOST_PASSWORD = 'your password'
+# -----------------------------------------------------------------------------

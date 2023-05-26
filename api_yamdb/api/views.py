@@ -13,6 +13,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from reviews.models import Category, Genre, Title
 from .serializers import (CategorySerializer, GenreSerializer, GetTitleSerializer, 
                            PostTitleSerializer, TokenSerializer, UserRegistrationSerializer) 
+from rest_framework import permissions
+from rest_framework import status
+from rest_framework.generics import CreateAPIView, GenericAPIView
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from .serializers import UserRegistrationSerializer, TokenSerializer
 
 User = get_user_model()
 
@@ -22,7 +29,6 @@ class CreateListDestory(mixins.ListModelMixin,
                    mixins.DestroyModelMixin,
                    viewsets.GenericViewSet):
     pass
-
 
 class RegisterView(CreateAPIView):
     """
@@ -183,4 +189,3 @@ class TitleViewSet(viewsets.ModelViewSet):
         if self.action in ('list', 'retrieve'):
             return GetTitleSerializer
         return PostTitleSerializer
-                  
