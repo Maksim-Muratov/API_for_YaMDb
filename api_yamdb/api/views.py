@@ -3,18 +3,34 @@ import string
 
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
-from rest_framework import permissions, viewsets, filters
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
+from rest_framework import mixins, viewsets
+from rest_framework import permissions
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import CreateAPIView, GenericAPIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .permissions import AdminOnlyPermission, OwnerOnlyPermission
+from reviews.models import Category, Genre, Title
+from .permissions import AdminOnlyPermission, OwnerOnlyPermission, \
+    CategoryAndGenresPermission
+from .serializers import (CategorySerializer, GenreSerializer,
+                          GetTitleSerializer,
+                          PostTitleSerializer)
 from .serializers import (UserRegistrationSerializer, TokenSerializer,
                           UserSerializer)
 
 User = get_user_model()
+
+
+class CreateListDestory(mixins.ListModelMixin,
+                        mixins.CreateModelMixin,
+                        mixins.DestroyModelMixin,
+                        viewsets.GenericViewSet):
+    pass
 
 
 class RegisterView(CreateAPIView):
@@ -178,3 +194,43 @@ def profile_change(request):
     # Метод GET.
     serializer = UserSerializer(user)
     return Response(serializer.data)
+
+
+class GenreViewSet(CreateListDestory):
+    """View-функция для жанров произведений."""
+
+    queryset = Genre.objects.all()
+    serializer_class = GenreSerializer
+    permission_classes = [CategoryAndGenresPermission]
+    pagination_class = PageNumberPagination
+    search_fields = ['=name']
+
+
+class CategoryViewSet(CreateListDestory):
+    """View-функция для категорий произведений."""
+
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [CategoryAndGenresPermission]
+    pagination_class = PageNumberPagination
+    search_fields = ['=name']
+    # Вариант перенаправления с http://127.0.0.1:8000/api/v1/categories/1/
+    # На http://127.0.0.1:8000/api/v1/categories/{slug}/
+    # lookup_field = 'slug'
+
+
+class TitleViewSet(viewsets.ModelViewSet):
+    """View-функция для произведений."""
+
+    queryset = (Title.objects.all().select_related("category")
+                .prefetch_related("genre")
+                # .annotate(rating=Avg('reviews__score'))
+                )
+    # permission_classes = ...
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = ('name', 'year', 'category', 'genre')
+
+    def get_serializer_class(self):
+        if self.action in ('list', 'retrieve'):
+            return GetTitleSerializer
+        return PostTitleSerializer

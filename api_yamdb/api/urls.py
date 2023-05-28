@@ -1,10 +1,27 @@
 from django.urls import include, path
 from rest_framework import routers
 
-from api.views import RegisterView, TokenView, UsersViewSet, profile_change
+from api.views import (RegisterView, TokenView, UsersViewSet, profile_change,
+                       CategoryViewSet, GenreViewSet, TitleViewSet)
 
 v1_router = routers.DefaultRouter()
 v1_router.register('users', UsersViewSet)
+
+v1_router.register(
+    r'^genres',
+    GenreViewSet,
+    basename='genres'
+)
+v1_router.register(
+    r'^categories',
+    CategoryViewSet,
+    basename='categories'
+)
+v1_router.register(
+    r'^titles',
+    TitleViewSet,
+    basename='titles'
+)
 
 urlpatterns = [
     # Просмотр и изменение своего профиля.
