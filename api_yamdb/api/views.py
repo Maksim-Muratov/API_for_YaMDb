@@ -4,26 +4,26 @@ import string
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django_filters.rest_framework import DjangoFilterBackend
+
 from django.shortcuts import get_object_or_404
 from django.db.models import Avg
-from rest_framework import mixins, permissions, status, viewsets
+from rest_framework import (mixins, permissions, status, viewsets,
+                            status, filters, mixins, viewsets)
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import CreateAPIView, GenericAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from reviews.models import Category, Genre, Title, Review, Comment
+from .permissions import AdminOnlyPermission, OwnerOnlyPermission, \
+    CategoryAndGenresPermission
 from .serializers import (CategorySerializer, GenreSerializer,
                           GetTitleSerializer, PostTitleSerializer,
                           TokenSerializer, UserRegistrationSerializer,
                           ReviewSerializer, CommentSerializer)
-from rest_framework import permissions
-from rest_framework import status
-from rest_framework.generics import CreateAPIView, GenericAPIView
-from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
-
-from .serializers import UserRegistrationSerializer, TokenSerializer
+from .serializers import (UserRegistrationSerializer, TokenSerializer,
+                          UserSerializer)
 
 User = get_user_model()
 
@@ -126,6 +126,9 @@ class RegisterView(CreateAPIView):
 
 
 class TokenView(GenericAPIView):
+    """
+    Получения Токена.
+    """
     permission_classes = [permissions.AllowAny]  # Регистрация доступна всем.
     serializer_class = TokenSerializer
 
@@ -154,8 +157,45 @@ class TokenView(GenericAPIView):
 
             return Response(tokens)
         else:
+
             return Response({'error': 'Предоставлены неверные данные.'},
                             status=status.HTTP_400_BAD_REQUEST)
+
+
+class UsersViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.order_by('id')  # Для пагинации нужна сортировка.
+    serializer_class = UserSerializer
+    permission_classes = [AdminOnlyPermission]
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('username',)
+    http_method_names = [  # Метод 'put' исключен.
+        'get', 'post', 'patch', 'delete', 'head', 'options']
+    lookup_field = 'username'  # /api/v1/users/rea/ вместо /api/v1/users/1/
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([OwnerOnlyPermission, permissions.IsAuthenticated])
+def profile_change(request):
+    """
+    Получение и Изменение своего профиля.
+    """
+    user = request.user
+    msg = 'У вас нет разрешения изменять роль пользователя.'
+
+    if request.method == 'PATCH':
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            # Менять user.role может только admin.
+            if 'role' in serializer.validated_data and user.role != 'admin':
+                return Response({'detail': msg},
+                                status=status.HTTP_403_FORBIDDEN)
+
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # Метод GET.
+    serializer = UserSerializer(user)
+    return Response(serializer.data)
 
 
 class GenreViewSet(CreateListDestory):
@@ -163,7 +203,7 @@ class GenreViewSet(CreateListDestory):
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    # permission_classes = ...
+    permission_classes = [CategoryAndGenresPermission]
     pagination_class = PageNumberPagination
     search_fields = ['=name']
 
@@ -173,9 +213,12 @@ class CategoryViewSet(CreateListDestory):
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    # permission_classes = ...
+    permission_classes = [CategoryAndGenresPermission]
     pagination_class = PageNumberPagination
     search_fields = ['=name']
+    # Вариант перенаправления с http://127.0.0.1:8000/api/v1/categories/1/
+    # На http://127.0.0.1:8000/api/v1/categories/{slug}/
+    # lookup_field = 'slug'
 
 
 class TitleViewSet(viewsets.ModelViewSet):

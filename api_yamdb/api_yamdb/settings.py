@@ -1,6 +1,6 @@
 import os
+from datetime import timedelta
 from pathlib import Path
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -11,7 +11,6 @@ SECRET_KEY = 'p&l%385148kslhtyn^##a1)ilz@4zqj=rq&agdol^##zgl9(vs'
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-
 
 # Application definition
 
@@ -62,7 +61,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'api_yamdb.wsgi.application'
 
-
 # Database
 
 DATABASES = {
@@ -71,7 +69,6 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 
 # Password validation
 
@@ -90,7 +87,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 
 LANGUAGE_CODE = 'ru-RU'
@@ -103,26 +99,27 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 
 STATIC_URL = '/static/'
 
 STATICFILES_DIRS = ((BASE_DIR / 'static/'),)
 
+# -----------------------------------------------------------------------------
+# Настройки Django Rest Framework
 REST_FRAMEWORK = {
+    # Стандартно - доступ только для авторизованных пользователей.
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-
+    # Авторизация по JWT-токену.
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
-    'DEFAULT_PAGINATION_CLASS':
-        'rest_framework.pagination.PageNumberPagination',
+    # Глобальная настройка пагинации ответов.
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 5
 }
-
 # -----------------------------------------------------------------------------
 # Указание, что вместо стандартной модели пользователя
 # нужно использовать кастомную модель из приложения users.
@@ -141,4 +138,9 @@ EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
 # EMAIL_USE_SSL = True
 # EMAIL_HOST_USER = 'your@djangoapp.com'
 # EMAIL_HOST_PASSWORD = 'your password'
+# -----------------------------------------------------------------------------
+# Настройки библиотеки Simple_JWT.
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=7),  # Время жизни токена 7 дней,
+}
 # -----------------------------------------------------------------------------
