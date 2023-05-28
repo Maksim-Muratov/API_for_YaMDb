@@ -1,9 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.core.exceptions import ValidationError
 from django.core.validators import (EmailValidator, MaxLengthValidator,
                                     MaxValueValidator, MinValueValidator)
 from django.db import transaction
-from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
@@ -153,8 +153,8 @@ class ReviewSerializer(serializers.ModelSerializer):
         title = get_object_or_404(Title, pk=title_id)
         if request.method == 'POST':
             if Review.objects.filter(
-                author=request.user,
-                title=title
+                    author=request.user,
+                    title=title
             ).exists():
                 raise ValidationError(
                     'На одно произведение можно оставить только один отзыв'

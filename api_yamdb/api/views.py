@@ -3,12 +3,10 @@ import string
 
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
-from django_filters.rest_framework import DjangoFilterBackend
-
-from django.shortcuts import get_object_or_404
 from django.db.models import Avg
-from rest_framework import (mixins, permissions, status, viewsets,
-                            status, filters, mixins, viewsets)
+from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import (permissions, status, filters, mixins, viewsets)
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import CreateAPIView, GenericAPIView
 from rest_framework.pagination import PageNumberPagination
@@ -17,10 +15,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from reviews.models import Category, Genre, Title, Review, Comment
 from .permissions import AdminOnlyPermission, OwnerOnlyPermission, \
-    CategoryAndGenresPermission
+    CategoryAndGenresPermission, ReviewsAndCommentsPermission, TitlesPermission
 from .serializers import (CategorySerializer, GenreSerializer,
                           GetTitleSerializer, PostTitleSerializer,
-                          TokenSerializer, UserRegistrationSerializer,
                           ReviewSerializer, CommentSerializer)
 from .serializers import (UserRegistrationSerializer, TokenSerializer,
                           UserSerializer)
@@ -218,7 +215,7 @@ class CategoryViewSet(CreateListDestory):
     search_fields = ['=name']
     # Вариант перенаправления с http://127.0.0.1:8000/api/v1/categories/1/
     # На http://127.0.0.1:8000/api/v1/categories/{slug}/
-    # lookup_field = 'slug'
+    lookup_field = 'slug'
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -228,7 +225,7 @@ class TitleViewSet(viewsets.ModelViewSet):
                 .prefetch_related("genre")
                 .annotate(rating_avg=Avg('reviews__score'))
                 )
-    # permission_classes = ...
+    permission_classes = [TitlesPermission]
     filter_backends = (DjangoFilterBackend,)
     filterset_fields = ('name', 'year', 'category', 'genre')
 
@@ -242,7 +239,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
     """View-функция для отзывов."""
 
     serializer_class = ReviewSerializer
-    # permission_classes =
+
+    permission_classes = [ReviewsAndCommentsPermission]
 
     def get_queryset(self):
         title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
@@ -257,7 +255,8 @@ class CommentViewSet(viewsets.ModelViewSet):
     """View-функция для комментариев."""
 
     serializer_class = CommentSerializer
-    # permission_classes =
+
+    permission_classes = [ReviewsAndCommentsPermission]
 
     def get_queryset(self):
         review = get_object_or_404(Comment, id=self.kwargs.get('post_id'))
