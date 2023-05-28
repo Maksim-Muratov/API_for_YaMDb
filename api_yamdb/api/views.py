@@ -4,22 +4,24 @@ import string
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters
-from rest_framework import mixins, viewsets
-from rest_framework import permissions
-from rest_framework import status
+
+from django.shortcuts import get_object_or_404
+from django.db.models import Avg
+from rest_framework import (mixins, permissions, status, viewsets,
+                            status, filters, mixins, viewsets)
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import CreateAPIView, GenericAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from reviews.models import Category, Genre, Title
+from reviews.models import Category, Genre, Title, Review, Comment
 from .permissions import AdminOnlyPermission, OwnerOnlyPermission, \
     CategoryAndGenresPermission
 from .serializers import (CategorySerializer, GenreSerializer,
-                          GetTitleSerializer,
-                          PostTitleSerializer)
+                          GetTitleSerializer, PostTitleSerializer,
+                          TokenSerializer, UserRegistrationSerializer,
+                          ReviewSerializer, CommentSerializer)
 from .serializers import (UserRegistrationSerializer, TokenSerializer,
                           UserSerializer)
 
@@ -155,9 +157,9 @@ class TokenView(GenericAPIView):
 
             return Response(tokens)
         else:
-            return Response(
-                {'error': 'Предоставлены неверные данные.'},
-                status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({'error': 'Предоставлены неверные данные.'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
 
 class UsersViewSet(viewsets.ModelViewSet):
@@ -224,7 +226,7 @@ class TitleViewSet(viewsets.ModelViewSet):
 
     queryset = (Title.objects.all().select_related("category")
                 .prefetch_related("genre")
-                # .annotate(rating=Avg('reviews__score'))
+                .annotate(rating_avg=Avg('reviews__score'))
                 )
     # permission_classes = ...
     filter_backends = (DjangoFilterBackend,)
@@ -234,3 +236,33 @@ class TitleViewSet(viewsets.ModelViewSet):
         if self.action in ('list', 'retrieve'):
             return GetTitleSerializer
         return PostTitleSerializer
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    """View-функция для отзывов."""
+
+    serializer_class = ReviewSerializer
+    # permission_classes =
+
+    def get_queryset(self):
+        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
+        return title.reviews.all()
+
+    def perform_create(self, serializer):
+        title = get_object_or_404(Title, id=self.kwargs.get("title_id"))
+        serializer.save(author=self.request.user, title=title)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """View-функция для комментариев."""
+
+    serializer_class = CommentSerializer
+    # permission_classes =
+
+    def get_queryset(self):
+        review = get_object_or_404(Comment, id=self.kwargs.get('post_id'))
+        return review.comments.all()
+
+    def perform_create(self, serializer):
+        review = get_object_or_404(Review, id=self.kwargs.get("review_id"))
+        serializer.save(author=self.request.user, review=review)

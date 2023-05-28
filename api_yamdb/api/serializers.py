@@ -1,10 +1,14 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.validators import UnicodeUsernameValidator
-from django.core.validators import EmailValidator, MaxLengthValidator
+from django.core.validators import (EmailValidator, MaxLengthValidator,
+                                    MaxValueValidator, MinValueValidator)
 from django.db import transaction
+from django.core.exceptions import ValidationError
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
+from rest_framework.relations import SlugRelatedField
 
-from reviews.models import Category, Genre, Title
+from reviews.models import Category, Genre, Title, Review, Comment
 
 User = get_user_model()
 
@@ -120,11 +124,56 @@ class GetTitleSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     genre = GenreSerializer(read_only=True, many=True)
     rating = serializers.IntegerField(
-        # Тут надо как-то считать средний рейтинг
-        read_only=True
+        source='rating_avg',
+        read_only=True,
+        default=None,
+        validators=[
+            MinValueValidator(1, 'Оценка не может быть меньше 1'),
+            MaxValueValidator(10, 'Оценка не может быть больше 10'),
+        ],
     )
 
     class Meta:
         model = Title
         fields = (
             "id", "name", "year", "rating", "description", "genre", "category")
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    """Сериализатор для отзывов на произведения."""
+
+    author = SlugRelatedField(
+        slug_field='username',
+        read_only=True
+    )
+
+    def validate(self, data):
+        request = self.context['request']
+        title_id = self.context["view"].kwargs.get("title_id")
+        title = get_object_or_404(Title, pk=title_id)
+        if request.method == 'POST':
+            if Review.objects.filter(
+                author=request.user,
+                title=title
+            ).exists():
+                raise ValidationError(
+                    'На одно произведение можно оставить только один отзыв'
+                )
+        return data
+
+    class Meta:
+        fields = ('id', 'author', 'score', 'text', 'pub_date')
+        model = Review
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """Сериализатор для комментариев к отзывам."""
+
+    author = SlugRelatedField(
+        slug_field='username',
+        read_only=True
+    )
+
+    class Meta:
+        fields = ('id', 'author', 'text', 'pub_date')
+        model = Comment

@@ -1,7 +1,9 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from .validators import validate_year, validate_score
+from django.core.validators import MaxValueValidator, MinValueValidator
+
+from .validators import validate_year
 
 LEN_NAME = 15
 LEN_TEXT = 30
@@ -145,7 +147,10 @@ class Review(models.Model):
         related_name='reviews'
     )
     score = models.IntegerField(
-        validators=[validate_score],
+        validators=[
+            MinValueValidator(1, 'Оценка не может быть меньше 1'),
+            MaxValueValidator(10, 'Оценка не может быть больше 10'),
+        ],
         verbose_name='Оценка произведения (По десятибальной шкале)'
     )
     pub_date = models.DateTimeField(
