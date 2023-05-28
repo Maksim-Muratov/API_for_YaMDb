@@ -4,15 +4,19 @@ import string
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django_filters.rest_framework import DjangoFilterBackend
+from django.shortcuts import get_object_or_404
+from django.db.models import Avg
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.generics import CreateAPIView, GenericAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from reviews.models import Category, Genre, Title
-from .serializers import (CategorySerializer, GenreSerializer, GetTitleSerializer, 
-                           PostTitleSerializer, TokenSerializer, UserRegistrationSerializer) 
+from reviews.models import Category, Genre, Title, Review, Comment
+from .serializers import (CategorySerializer, GenreSerializer,
+                          GetTitleSerializer, PostTitleSerializer,
+                          TokenSerializer, UserRegistrationSerializer,
+                          ReviewSerializer, CommentSerializer)
 from rest_framework import permissions
 from rest_framework import status
 from rest_framework.generics import CreateAPIView, GenericAPIView
@@ -25,10 +29,11 @@ User = get_user_model()
 
 
 class CreateListDestory(mixins.ListModelMixin,
-                   mixins.CreateModelMixin,
-                   mixins.DestroyModelMixin,
-                   viewsets.GenericViewSet):
+                        mixins.CreateModelMixin,
+                        mixins.DestroyModelMixin,
+                        viewsets.GenericViewSet):
     pass
+
 
 class RegisterView(CreateAPIView):
     """
@@ -149,9 +154,8 @@ class TokenView(GenericAPIView):
 
             return Response(tokens)
         else:
-            return Response(
-                        {'error': 'Предоставлены неверные данные.'},
-                        status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Предоставлены неверные данные.'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
 
 class GenreViewSet(CreateListDestory):
@@ -169,7 +173,7 @@ class CategoryViewSet(CreateListDestory):
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    #permission_classes = ...
+    # permission_classes = ...
     pagination_class = PageNumberPagination
     search_fields = ['=name']
 
@@ -179,8 +183,8 @@ class TitleViewSet(viewsets.ModelViewSet):
 
     queryset = (Title.objects.all().select_related("category")
                 .prefetch_related("genre")
-                #.annotate(rating=Avg('reviews__score'))
-            )
+                .annotate(rating_avg=Avg('reviews__score'))
+                )
     # permission_classes = ...
     filter_backends = (DjangoFilterBackend,)
     filterset_fields = ('name', 'year', 'category', 'genre')
@@ -189,3 +193,33 @@ class TitleViewSet(viewsets.ModelViewSet):
         if self.action in ('list', 'retrieve'):
             return GetTitleSerializer
         return PostTitleSerializer
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    """View-функция для отзывов."""
+
+    serializer_class = ReviewSerializer
+    # permission_classes =
+
+    def get_queryset(self):
+        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
+        return title.reviews.all()
+
+    def perform_create(self, serializer):
+        title = get_object_or_404(Title, id=self.kwargs.get("title_id"))
+        serializer.save(author=self.request.user, title=title)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """View-функция для комментариев."""
+
+    serializer_class = CommentSerializer
+    # permission_classes =
+
+    def get_queryset(self):
+        review = get_object_or_404(Comment, id=self.kwargs.get('post_id'))
+        return review.comments.all()
+
+    def perform_create(self, serializer):
+        review = get_object_or_404(Review, id=self.kwargs.get("review_id"))
+        serializer.save(author=self.request.user, review=review)
