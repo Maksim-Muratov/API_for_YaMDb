@@ -42,6 +42,7 @@ class Genre(models.Model):
     )
 
     class Meta:
+        ordering = ['id']
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
 
@@ -58,6 +59,7 @@ class Category(models.Model):
     )
 
     class Meta:
+        ordering = ['id']
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
@@ -78,9 +80,6 @@ class Title(models.Model):
     description = models.TextField(
         null=True, verbose_name='Описание'
     )
-    rating = models.IntegerField(
-        blank=True, default=None
-    )
     genre = models.ManyToManyField(
         Genre,
         through='TitleGenre',
@@ -96,7 +95,7 @@ class Title(models.Model):
     )
 
     class Meta:
-        ordering = ['-year']
+        ordering = ['id']
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
 

@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from reviews.models import Category, Genre, Title, Review, Comment
+from .mixins import CreateListDestroy
 from .permissions import AdminOnlyPermission, OwnerOnlyPermission, \
     CategoryAndGenresPermission, ReviewsAndCommentsPermission, TitlesPermission
 from .serializers import (CategorySerializer, GenreSerializer,
@@ -23,13 +24,6 @@ from .serializers import (UserRegistrationSerializer, TokenSerializer,
                           UserSerializer)
 
 User = get_user_model()
-
-
-class CreateListDestory(mixins.ListModelMixin,
-                        mixins.CreateModelMixin,
-                        mixins.DestroyModelMixin,
-                        viewsets.GenericViewSet):
-    pass
 
 
 class RegisterView(CreateAPIView):
@@ -195,23 +189,25 @@ def profile_change(request):
     return Response(serializer.data)
 
 
-class GenreViewSet(CreateListDestory):
+class GenreViewSet(CreateListDestroy):
     """View-функция для жанров произведений."""
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     permission_classes = [CategoryAndGenresPermission]
     pagination_class = PageNumberPagination
+    filter_backends = (filters.SearchFilter,)
     search_fields = ['=name']
 
 
-class CategoryViewSet(CreateListDestory):
+class CategoryViewSet(CreateListDestroy):
     """View-функция для категорий произведений."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [CategoryAndGenresPermission]
     pagination_class = PageNumberPagination
+    filter_backends = (filters.SearchFilter,)
     search_fields = ['=name']
     # Вариант перенаправления с http://127.0.0.1:8000/api/v1/categories/1/
     # На http://127.0.0.1:8000/api/v1/categories/{slug}/
@@ -221,13 +217,13 @@ class CategoryViewSet(CreateListDestory):
 class TitleViewSet(viewsets.ModelViewSet):
     """View-функция для произведений."""
 
-    queryset = (Title.objects.all().select_related("category")
-                .prefetch_related("genre")
+    queryset = (Title.objects.all().select_related('category')
+                .prefetch_related('genre')
                 .annotate(rating_avg=Avg('reviews__score'))
                 )
     permission_classes = [TitlesPermission]
     filter_backends = (DjangoFilterBackend,)
-    filterset_fields = ('name', 'year', 'category', 'genre')
+    filterset_fields = ('id', 'name', 'year', 'category', 'genre')
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
@@ -247,7 +243,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return title.reviews.all()
 
     def perform_create(self, serializer):
-        title = get_object_or_404(Title, id=self.kwargs.get("title_id"))
+        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
         serializer.save(author=self.request.user, title=title)
 
 
@@ -263,5 +259,5 @@ class CommentViewSet(viewsets.ModelViewSet):
         return review.comments.all()
 
     def perform_create(self, serializer):
-        review = get_object_or_404(Review, id=self.kwargs.get("review_id"))
+        review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
         serializer.save(author=self.request.user, review=review)
