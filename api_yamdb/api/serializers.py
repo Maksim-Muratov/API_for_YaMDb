@@ -16,7 +16,7 @@ User = get_user_model()
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """
     Сериализатор для Регистрации Пользователей.
-    /api/v1/auth/token/
+    v1/auth/signup/
     """
 
     username = serializers.CharField(
@@ -55,12 +55,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         Создание пользователя.
         Сохранение введенных полей email, username и confirmation_code в БД.
         """
-        email = validated_data['email']
-        username = validated_data['username']
-
         user = User.objects.create(
-            email=email,
-            username=username,
+            email=validated_data['email'],
+            username=validated_data['username'],
             confirmation_code=self.context['confirmation_code']
         )
         user.save()
