@@ -85,7 +85,8 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ("name", "slug")
+        fields = ('name', 'slug')
+        lookup_field = 'slug'
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -93,26 +94,26 @@ class GenreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Genre
-        fields = ("name", "slug")
+        fields = ('name', 'slug')
+        lookup_field = 'slug'
 
 
 class PostTitleSerializer(serializers.ModelSerializer):
     """Сериализатор для добавления произведений."""
 
     category = serializers.SlugRelatedField(
-        many=True,
-        slug_field="name",
+        slug_field='slug',
         queryset=Category.objects.all()
     )
     genre = serializers.SlugRelatedField(
         many=True,
-        slug_field="slug",
+        slug_field='slug',
         queryset=Genre.objects.all()
     )
 
     class Meta:
         model = Title
-        fields = ("name", "year", "description", "genre", "category")
+        fields = ('id', 'name', 'year', 'description', 'genre', 'category')
 
 
 class GetTitleSerializer(serializers.ModelSerializer):
@@ -133,7 +134,7 @@ class GetTitleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Title
         fields = (
-            "id", "name", "year", "rating", "description", "genre", "category")
+            'id', 'name', 'year', 'rating', 'description', 'genre', 'category')
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -146,7 +147,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         request = self.context['request']
-        title_id = self.context["view"].kwargs.get("title_id")
+        title_id = self.context['view'].kwargs.get('title_id')
         title = get_object_or_404(Title, pk=title_id)
         if request.method == 'POST':
             if Review.objects.filter(
