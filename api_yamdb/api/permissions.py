@@ -8,40 +8,19 @@ class AdminOnlyPermission(BasePermission):
     """
 
     def has_permission(self, request, view):
-        if request.user.is_anonymous or request.user.role == ('user',
-                                                              'moderator'):
+        if request.user.is_anonymous:
             return False
         if request.user.role == 'admin' or request.user.is_superuser:
             return True
-        else:
-            return False
-
-    def has_object_permission(self, request, view, obj):
-        if request.user.role == 'admin' or request.user.is_superuser:
-            return True
 
 
-class ModeratorPermission(BasePermission):
+class AuthOwnerPermission(BasePermission):
     """
-    Разрешение, которое позволяет доступ только модераторам и Выше.
+    Разрешение только для авторизованного владельца obj.
     """
 
     def has_permission(self, request, view):
-        return request.user.role == ('moderator' or
-                                     'admin' or
-                                     request.user.is_superuser)
-
-    def has_object_permission(self, request, view, obj):
-        if request.user.role == ('moderator' or
-                                 'admin' or
-                                 request.user.is_superuser):
-            return True
-
-
-class OwnerOnlyPermission(BasePermission):
-    """
-    Разрешение только для владельца.
-    """
+        return bool(request.user and request.user.is_authenticated)
 
     def has_object_permission(self, request, view, obj):
         return obj.author == request.user
