@@ -6,7 +6,7 @@ from django.core.mail import send_mail
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import (permissions, status, filters, mixins, viewsets)
+from rest_framework import (permissions, status, filters, viewsets)
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import CreateAPIView, GenericAPIView
 from rest_framework.pagination import PageNumberPagination
@@ -21,8 +21,8 @@ from .permissions import (AdminOnlyPermission, AuthOwnerPermission,
                           ReviewsAndCommentsPermission, TitlesPermission)
 from .serializers import (CategorySerializer, GenreSerializer,
                           GetTitleSerializer, PostTitleSerializer,
-                          ReviewSerializer, CommentSerializer)
-from .serializers import (UserRegistrationSerializer, TokenSerializer,
+                          ReviewSerializer, CommentSerializer,
+                          UserRegistrationSerializer, TokenSerializer,
                           UserSerializer)
 
 User = get_user_model()
@@ -102,7 +102,8 @@ class RegisterView(CreateAPIView):
 
 class TokenView(GenericAPIView):
     """
-    Получения Токена.
+    Получение Токена.
+    v1/auth/token/
     """
     permission_classes = [permissions.AllowAny]
     serializer_class = TokenSerializer
@@ -132,11 +133,12 @@ class TokenView(GenericAPIView):
 
 
 class UsersViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.order_by('id')  # Для пагинации нужна сортировка.
+    """Эндпойнт v1/users."""
+    queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AdminOnlyPermission]
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('username',)
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['username']
     http_method_names = [  # Метод 'put' исключен.
         'get', 'post', 'patch', 'delete', 'head', 'options']
     lookup_field = 'username'  # ./users/rea/ вместо ./users/1/
