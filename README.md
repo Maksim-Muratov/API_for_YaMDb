@@ -45,3 +45,22 @@ python3 manage.py migrate
 ```
 python3 manage.py runserver
 ```
+### Как импортировать данные из scv в базу данных:
+
+Перейдите в shell:
+
+```
+python3 manage.py shell
+```
+Импортируйте скрипт:
+
+```
+from static.data.import_data import import_data
+```
+Запустите скрипт:
+
+с отчетом об ошибках
+import_data(True) 
+
+без отчета
+import_data()

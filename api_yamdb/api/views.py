@@ -22,6 +22,7 @@ from .serializers import (CategorySerializer, GenreSerializer,
                           ReviewSerializer, CommentSerializer)
 from .serializers import (UserRegistrationSerializer, TokenSerializer,
                           UserSerializer)
+from .filters import FilterTitleSet
 
 User = get_user_model()
 
@@ -198,6 +199,7 @@ class GenreViewSet(CreateListDestroy):
     pagination_class = PageNumberPagination
     filter_backends = (filters.SearchFilter,)
     search_fields = ['=name']
+    lookup_field = 'slug'
 
 
 class CategoryViewSet(CreateListDestroy):
@@ -220,10 +222,10 @@ class TitleViewSet(viewsets.ModelViewSet):
     queryset = (Title.objects.all().select_related('category')
                 .prefetch_related('genre')
                 .annotate(rating_avg=Avg('reviews__score'))
-                )
+                .order_by('id'))
     permission_classes = [TitlesPermission]
     filter_backends = (DjangoFilterBackend,)
-    filterset_fields = ('id', 'name', 'year', 'category', 'genre')
+    filterset_class = FilterTitleSet
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
