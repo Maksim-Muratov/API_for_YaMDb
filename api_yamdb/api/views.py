@@ -177,6 +177,7 @@ class GenreViewSet(CreateListDestroy):
     pagination_class = PageNumberPagination
     filter_backends = (filters.SearchFilter,)
     search_fields = ['=name']
+    lookup_field = 'slug'
 
 
 class CategoryViewSet(CreateListDestroy):
@@ -188,9 +189,7 @@ class CategoryViewSet(CreateListDestroy):
     pagination_class = PageNumberPagination
     filter_backends = (filters.SearchFilter,)
     search_fields = ['=name']
-    # Вариант перенаправления с http://127.0.0.1:8000/api/v1/categories/1/
-    # На http://127.0.0.1:8000/api/v1/categories/{slug}/
-    # lookup_field = 'slug'
+    lookup_field = 'slug'
 
 
 class TitleViewSet(viewsets.ModelViewSet):
