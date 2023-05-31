@@ -24,6 +24,7 @@ from .serializers import (CategorySerializer, GenreSerializer,
                           ReviewSerializer, CommentSerializer,
                           UserRegistrationSerializer, TokenSerializer,
                           UserSerializer)
+from .filters import FilterTitleSet
 
 User = get_user_model()
 
@@ -198,10 +199,10 @@ class TitleViewSet(viewsets.ModelViewSet):
     queryset = (Title.objects.all().select_related('category')
                 .prefetch_related('genre')
                 .annotate(rating_avg=Avg('reviews__score'))
-                )
+                .order_by('id'))
     permission_classes = [TitlesPermission]
     filter_backends = (DjangoFilterBackend,)
-    filterset_fields = ('id', 'name', 'year', 'category', 'genre')
+    filterset_class = FilterTitleSet
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
