@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from api_yamdb.settings import CODE_LENGTH
-from reviews.models import Category, Genre, Title, Review, Comment
+from reviews.models import Category, Genre, Title, Review
 from .mixins import CreateListDestroy
 from .permissions import (AdminOnlyPermission, AuthOwnerPermission,
                           CategoryAndGenresPermission,
@@ -234,7 +234,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     permission_classes = [ReviewsAndCommentsPermission]
 
     def get_queryset(self):
-        review = get_object_or_404(Comment, id=self.kwargs.get('post_id'))
+        review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
         return review.comments.all()
 
     def perform_create(self, serializer):
