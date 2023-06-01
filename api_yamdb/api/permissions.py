@@ -35,13 +35,11 @@ class CategoryAndGenresPermission(BasePermission):
         if view.action in ['list']:
             return True
         if hasattr(request.user, 'role'):
-            return request.user.role == ('admin' or
-                                         request.user.is_superuser)
+            return request.user.role == 'admin' or request.user.is_superuser
 
     def has_object_permission(self, request, view, obj):
         if hasattr(request.user, 'role'):
-            return request.user.role == ('admin' or
-                                         request.user.is_superuser)
+            return request.user.role == 'admin' or request.user.is_superuser
 
 
 class TitlesPermission(BasePermission):
@@ -53,15 +51,13 @@ class TitlesPermission(BasePermission):
         if view.action in ['list', 'retrieve']:
             return True
         if hasattr(request.user, 'role'):
-            return request.user.role == ('admin' or
-                                         request.user.is_superuser)
+            return request.user.role == 'admin' or request.user.is_superuser
 
     def has_object_permission(self, request, view, obj):
         if view.action in ['list', 'retrieve']:
             return True
         if hasattr(request.user, 'role'):
-            return request.user.role == ('admin' or
-                                         request.user.is_superuser)
+            return request.user.role == 'admin' or request.user.is_superuser
 
 
 class ReviewsAndCommentsPermission(BasePermission):
@@ -72,18 +68,18 @@ class ReviewsAndCommentsPermission(BasePermission):
     def has_permission(self, request, view):
         if view.action in ['list', 'retrieve']:
             return True
-        elif view.action in ['create'] and request.user.is_authenticated:
+        if view.action in ['create'] and request.user.is_authenticated:
             return True
         obj = view.get_object()
         if hasattr(request.user, 'role'):
-            return (request.user.role == ('admin' or 'moderator' or
-                                          request.user.is_superuser)
-                    or obj.author == request.user)
+            return (request.user.role in ['admin', 'moderator']
+                    or request.user.is_superuser or obj.author == request.user)
 
     def has_object_permission(self, request, view, obj):
         if view.action in ['retrieve']:
             return True
+        if obj.author == request.user:
+            return True
         if hasattr(request.user, 'role'):
-            return (request.user.role == ('admin' or 'moderator' or
-                                          request.user.is_superuser)
-                    or obj.author == request.user)
+            return (request.user.role in ['admin', 'moderator']
+                    or request.user.is_superuser)
