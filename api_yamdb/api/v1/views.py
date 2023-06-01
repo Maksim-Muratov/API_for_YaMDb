@@ -6,7 +6,7 @@ from django.core.mail import send_mail
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import (permissions, status, filters, viewsets)
+from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import CreateAPIView, GenericAPIView
 from rest_framework.pagination import PageNumberPagination
@@ -14,17 +14,17 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from api_yamdb.settings import CODE_LENGTH
-from reviews.models import Category, Genre, Title, Review
+from reviews.models import Category, Genre, Review, Title
+from .filters import FilterTitleSet
 from .mixins import CreateListDestroy
 from .permissions import (AdminOnlyPermission, AuthOwnerPermission,
                           CategoryAndGenresPermission,
                           ReviewsAndCommentsPermission, TitlesPermission)
-from .serializers import (CategorySerializer, GenreSerializer,
-                          GetTitleSerializer, PostTitleSerializer,
-                          ReviewSerializer, CommentSerializer,
-                          UserRegistrationSerializer, TokenSerializer,
+from .serializers import (CategorySerializer, CommentSerializer,
+                          GenreSerializer, GetTitleSerializer,
+                          PostTitleSerializer, ReviewSerializer,
+                          TokenSerializer, UserRegistrationSerializer,
                           UserSerializer)
-from .filters import FilterTitleSet
 
 User = get_user_model()
 
