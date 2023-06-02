@@ -9,16 +9,14 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import CreateAPIView, GenericAPIView
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from api_yamdb.settings import CODE_LENGTH
 from reviews.models import Category, Genre, Review, Title
 from .filters import FilterTitleSet
-from .mixins import CreateListDestroy
+from .viewsets import CreateListDestroy
 from .permissions import (AdminOnlyPermission, AuthOwnerPermission,
-                          CategoryAndGenresPermission,
                           ReviewsAndCommentsPermission, TitlesPermission)
 from .serializers import (CategorySerializer, CommentSerializer,
                           GenreSerializer, GetTitleSerializer,
@@ -174,11 +172,6 @@ class GenreViewSet(CreateListDestroy):
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    permission_classes = [CategoryAndGenresPermission]
-    pagination_class = PageNumberPagination
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ['=name']
-    lookup_field = 'slug'
 
 
 class CategoryViewSet(CreateListDestroy):
@@ -186,11 +179,6 @@ class CategoryViewSet(CreateListDestroy):
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [CategoryAndGenresPermission]
-    pagination_class = PageNumberPagination
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ['=name']
-    lookup_field = 'slug'
 
 
 class TitleViewSet(viewsets.ModelViewSet):

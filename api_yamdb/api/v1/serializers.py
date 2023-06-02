@@ -5,6 +5,7 @@ from django.core.validators import (EmailValidator, MaxLengthValidator,
                                     MaxValueValidator, MinValueValidator)
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
 
@@ -85,7 +86,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ('name', 'slug')
+        exclude = ['id']
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -93,7 +94,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Genre
-        fields = ('name', 'slug')
+        exclude = ['id']
 
 
 class PostTitleSerializer(serializers.ModelSerializer):
@@ -112,6 +113,12 @@ class PostTitleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Title
         fields = ('id', 'name', 'year', 'description', 'genre', 'category')
+
+    def validate_year(self, value):
+        year = timezone.now().year
+        if not (value <= year):
+            raise serializers.ValidationError('Проверьте вводимый год')
+        return value
 
 
 class GetTitleSerializer(serializers.ModelSerializer):
