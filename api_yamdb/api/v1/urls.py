@@ -3,11 +3,14 @@ from rest_framework import routers
 
 from api.v1.views import (CategoryViewSet, CommentViewSet, GenreViewSet,
                           RegisterView, ReviewViewSet, TitleViewSet, TokenView,
-                          UsersViewSet, profile_change)
+                          UsersViewSet)
 
 v1_router = routers.DefaultRouter()
-v1_router.register('users', UsersViewSet)
-
+v1_router.register(
+    r'^users',
+    UsersViewSet,
+    basename='users'
+)
 v1_router.register(
     r'^genres',
     GenreViewSet,
@@ -35,9 +38,6 @@ v1_router.register(
 )
 
 urlpatterns = [
-    # Просмотр и изменение своего профиля.
-    # Должен быть перед роутером.
-    path('v1/users/me/', profile_change, name='profile_change'),
     # Роутер.
     path('v1/', include(v1_router.urls)),
     # Регистрация пользователя.
