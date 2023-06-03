@@ -1,5 +1,4 @@
-import random
-import string
+import uuid
 
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
@@ -7,18 +6,15 @@ from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import action
 from rest_framework.generics import CreateAPIView, GenericAPIView
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from api_yamdb.settings import CODE_LENGTH
 from reviews.models import Category, Genre, Review, Title
 from .filters import FilterTitleSet
-from .mixins import CreateListDestroy
+from .viewsets import CreateListDestroy
 from .permissions import (AdminOnlyPermission, AuthOwnerPermission,
-                          CategoryAndGenresPermission,
                           ReviewsAndCommentsPermission, TitlesPermission)
 from .serializers import (CategorySerializer, CommentSerializer,
                           GenreSerializer, GetTitleSerializer,
@@ -41,8 +37,7 @@ class RegisterView(CreateAPIView):
         """
         Генерирует случайный код подтверждения.
         """
-        characters = string.ascii_letters + string.digits
-        code = ''.join(random.choice(characters) for _ in range(CODE_LENGTH))
+        code = str(uuid.uuid4())
         return code
 
     def create(self, request, *args, **kwargs):
@@ -62,8 +57,6 @@ class RegisterView(CreateAPIView):
 
         existing_user = User.objects.filter(email=email,
                                             username=username).first()
-        existing_email = User.objects.filter(email=email).exists()
-        existing_username = User.objects.filter(username=username).exists()
 
         # Если пользователь уже существует:
         # Создает новый код подтверждения и обновляет его в БД.
@@ -71,16 +64,7 @@ class RegisterView(CreateAPIView):
             confirmation_code = self.generate_confirmation_code()
             existing_user.confirmation_code = confirmation_code
             existing_user.save()
-        elif existing_email:
-            return Response(
-                {'error': 'Пользователь с таким email уже существует.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        elif existing_username:
-            return Response(
-                {'error': 'Пользователь с таким username уже существует.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+
         # Если пользователь не существует:
         else:
             # Создает новый код подтверждения.
@@ -112,25 +96,11 @@ class TokenView(GenericAPIView):
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        username = serializer.validated_data['username']
-        confirmation_code = serializer.validated_data['confirmation_code']
+        user = request.user
 
-        # Проверяем учетные данные пользователя
-        try:
-            user = User.objects.get(username=username)
-        except User.DoesNotExist:
-            return Response(
-                {'username': 'Пользователь не найден.'},
-                status=status.HTTP_404_NOT_FOUND)
-
-        if user.confirmation_code == confirmation_code:
-            # Если учетные данные верны, создаем токен.
-            refresh = RefreshToken.for_user(user)
-            token = {'access': str(refresh.access_token)}
-            return Response(token)
-        else:
-            return Response({'error': 'Предоставлены неверные данные.'},
-                            status=status.HTTP_400_BAD_REQUEST)
+        refresh = RefreshToken.for_user(user)
+        token = {'access': str(refresh.access_token)}
+        return Response(token)
 
 
 class UsersViewSet(viewsets.ModelViewSet):
@@ -144,29 +114,29 @@ class UsersViewSet(viewsets.ModelViewSet):
         'get', 'post', 'patch', 'delete', 'head', 'options']
     lookup_field = 'username'  # ./users/rea/ вместо ./users/1/
 
+    @action(detail=False, methods=['GET', 'PATCH'],
+            permission_classes=[AuthOwnerPermission])
+    def me(self, request):
+        """
+        Получение и Изменение своего профиля.
+        Эндпойнт .v1/users/me/
+        """
+        user = request.user
+        msg = 'У вас нет разрешения изменять роль пользователя.'
 
-@api_view(['GET', 'PATCH'])
-@permission_classes([AuthOwnerPermission])
-def profile_change(request):
-    """
-    Получение и Изменение своего профиля.
-    """
-    user = request.user
-    msg = 'У вас нет разрешения изменять роль пользователя.'
-
-    if request.method == 'PATCH':
-        serializer = UserSerializer(user, data=request.data, partial=True)
-        if serializer.is_valid():
-            # Менять user.role может только admin.
-            if 'role' in serializer.validated_data and user.role != 'admin':
+        if request.method == 'PATCH':
+            serializer = UserSerializer(user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            # role может менять только админ.
+            if ('role' in serializer.validated_data
+                    and user.role != user.ADMIN or user.is_superuser):
                 return Response({'role error:': msg},
                                 status=status.HTTP_403_FORBIDDEN)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    # Метод GET.
-    serializer = UserSerializer(user)
-    return Response(serializer.data)
+        # Метод GET.
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
 
 
 class GenreViewSet(CreateListDestroy):
@@ -174,11 +144,6 @@ class GenreViewSet(CreateListDestroy):
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    permission_classes = [CategoryAndGenresPermission]
-    pagination_class = PageNumberPagination
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ['=name']
-    lookup_field = 'slug'
 
 
 class CategoryViewSet(CreateListDestroy):
@@ -186,11 +151,6 @@ class CategoryViewSet(CreateListDestroy):
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [CategoryAndGenresPermission]
-    pagination_class = PageNumberPagination
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ['=name']
-    lookup_field = 'slug'
 
 
 class TitleViewSet(viewsets.ModelViewSet):

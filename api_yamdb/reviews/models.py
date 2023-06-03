@@ -7,17 +7,19 @@ from .validators import validate_year
 LEN_NAME = 15
 LEN_TEXT = 30
 
-CHOICES = (
-    ('user', 'Пользователь'),
-    ('admin', 'Администратор'),
-    ('moderator', 'Модератор'),
-)
-
 
 class User(AbstractUser):
     """
     Добавление полей Биографии и Роли для модели User.
     """
+    USER = 'user'
+    ADMIN = 'admin'
+    MODERATOR = 'moderator'
+    CHOICES = (
+        (USER, 'Пользователь'),
+        (ADMIN, 'Администратор'),
+        (MODERATOR, 'Модератор'),
+    )
     email = models.EmailField(blank=False, unique=True)
     # Текстовое поле "О пользователе".
     bio = models.TextField(blank=True, null=True)

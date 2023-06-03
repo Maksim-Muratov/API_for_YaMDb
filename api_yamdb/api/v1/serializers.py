@@ -1,11 +1,12 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.exceptions import ValidationError
-from django.core.validators import (EmailValidator, MaxLengthValidator,
-                                    MaxValueValidator, MinValueValidator)
+from django.core.validators import EmailValidator, MaxLengthValidator
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import serializers
+from rest_framework.exceptions import NotFound
 from rest_framework.relations import SlugRelatedField
 
 from reviews.models import Category, Comment, Genre, Review, Title
@@ -49,6 +50,23 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
                 "Запрещенное значение для username.")
         return username
 
+    def validate(self, attrs):
+        """
+        Запрет повторного email и username.
+        """
+        email = attrs.get('email')
+        username = attrs.get('username')
+
+        existing_email = User.objects.filter(email=email).exists()
+        existing_username = User.objects.filter(username=username).exists()
+
+        if existing_email and not existing_username:
+            raise ValidationError('Пользователь с таким email уже существует.')
+        if existing_username and not existing_email:
+            raise ValidationError('Пользователь с таким username уже '
+                                  'существует.')
+        return attrs
+
     @transaction.atomic  # Записывает в БД, только выполнив всю работу.
     def create(self, validated_data):
         """
@@ -72,6 +90,27 @@ class TokenSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username', 'confirmation_code')
 
+    def validate(self, attrs):
+        """
+        Проверка введенного username и confirmation_code.
+        """
+        username = attrs.get('username')
+        confirmation_code = attrs.get('confirmation_code')
+
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            raise NotFound(
+                {'username': 'Пользователь не найден.'}
+            )
+
+        if user.confirmation_code != confirmation_code:
+            raise serializers.ValidationError(
+                {'error': 'Предоставлены неверные данные.'})
+
+        attrs['user'] = user
+        return attrs
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -85,7 +124,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ('name', 'slug')
+        exclude = ['id']
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -93,7 +132,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Genre
-        fields = ('name', 'slug')
+        exclude = ['id']
 
 
 class PostTitleSerializer(serializers.ModelSerializer):
@@ -113,6 +152,12 @@ class PostTitleSerializer(serializers.ModelSerializer):
         model = Title
         fields = ('id', 'name', 'year', 'description', 'genre', 'category')
 
+    def validate_year(self, value):
+        year = timezone.now().year
+        if not (value <= year):
+            raise serializers.ValidationError('Проверьте вводимый год')
+        return value
+
 
 class GetTitleSerializer(serializers.ModelSerializer):
     """Сериализатор для получения произведений."""
@@ -122,11 +167,7 @@ class GetTitleSerializer(serializers.ModelSerializer):
     rating = serializers.IntegerField(
         source='rating_avg',
         read_only=True,
-        default=None,
-        validators=[
-            MinValueValidator(1, 'Оценка не может быть меньше 1'),
-            MaxValueValidator(10, 'Оценка не может быть больше 10'),
-        ],
+        default=None
     )
 
     class Meta:

@@ -1,5 +1,7 @@
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
+from reviews.models import User
+
 
 class AdminOnlyPermission(BasePermission):
     """
@@ -10,17 +12,16 @@ class AdminOnlyPermission(BasePermission):
     def has_permission(self, request, view):
         if request.user.is_anonymous:
             return False
-        if request.user.role == 'admin' or request.user.is_superuser:
-            return True
+        return request.user.role == User.ADMIN or request.user.is_superuser
 
 
 class AuthOwnerPermission(BasePermission):
     """
-    Разрешение только для авторизованного владельца obj.
+    Разрешение только для авторизованного, владельца изменяемых данных.
     """
 
     def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated)
+        return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
         return obj.author == request.user
@@ -32,14 +33,17 @@ class CategoryAndGenresPermission(BasePermission):
     """
 
     def has_permission(self, request, view):
-        if view.action in ['list']:
+        if request.method in SAFE_METHODS:
             return True
-        if hasattr(request.user, 'role'):
-            return request.user.role == 'admin' or request.user.is_superuser
+        return (request.user.is_authenticated
+                and (request.user.role == User.ADMIN
+                     or request.user.is_superuser))
 
     def has_object_permission(self, request, view, obj):
-        if hasattr(request.user, 'role'):
-            return request.user.role == 'admin' or request.user.is_superuser
+        return (request.method in SAFE_METHODS
+                or (request.user.is_authenticated
+                    and (request.user.role == User.ADMIN
+                         or request.user.is_superuser)))
 
 
 class TitlesPermission(BasePermission):
@@ -48,16 +52,17 @@ class TitlesPermission(BasePermission):
     """
 
     def has_permission(self, request, view):
-        if view.action in ['list', 'retrieve']:
+        if request.method in SAFE_METHODS:
             return True
-        if hasattr(request.user, 'role'):
-            return request.user.role == 'admin' or request.user.is_superuser
+        return (request.user.is_authenticated
+                and (request.user.role == User.ADMIN
+                     or request.user.is_superuser))
 
     def has_object_permission(self, request, view, obj):
-        if view.action in ['list', 'retrieve']:
-            return True
-        if hasattr(request.user, 'role'):
-            return request.user.role == 'admin' or request.user.is_superuser
+        return (request.method in SAFE_METHODS
+                or (request.user.is_authenticated
+                    and (request.user.role == User.ADMIN
+                         or request.user.is_superuser)))
 
 
 class ReviewsAndCommentsPermission(BasePermission):
@@ -68,17 +73,14 @@ class ReviewsAndCommentsPermission(BasePermission):
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS:
             return True
-        if request.user.is_authenticated:
-            return True
-        if hasattr(request.user, 'role'):
-            return (request.user.role in ['admin', 'moderator']
-                    or request.user.is_superuser)
+        return (request.user.is_authenticated
+                or (request.user.is_authenticated
+                    and (request.user.role in [User.ADMIN, User.MODERATOR]
+                         or request.user.is_superuser)))
 
     def has_object_permission(self, request, view, obj):
-        if view.action in ['retrieve']:
-            return True
-        if obj.author == request.user:
-            return True
-        if hasattr(request.user, 'role'):
-            return (request.user.role in ['admin', 'moderator']
-                    or request.user.is_superuser)
+        return (request.method in SAFE_METHODS
+                or (obj.author == request.user)
+                or (request.user.is_authenticated
+                    and (request.user.role in [User.ADMIN, User.MODERATOR]
+                         or request.user.is_superuser)))
