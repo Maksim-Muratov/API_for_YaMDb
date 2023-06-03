@@ -24,7 +24,7 @@ class User(AbstractUser):
     # Текстовое поле "О пользователе".
     bio = models.TextField(blank=True, null=True)
     # Поле выбора роли из заданных вариантов.
-    role = models.CharField(max_length=50, choices=CHOICES, default='user')
+    role = models.CharField(max_length=50, choices=CHOICES, default=USER)
     # Поля для хранения кода подтверждения. Обновляется с каждым запросом.
     confirmation_code = models.CharField(max_length=10, blank=True, null=True)
 
